@@ -1,0 +1,147 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+% \setCJKmainfont{SimSun} % 可按需改为系统中可用中文字体
+% \usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{booktabs}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=cyan
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  breaklines=true,
+  numbers=left,
+  numberstyle=\tiny,
+  frame=single,
+  captionpos=b
+}
+
+\title{计算机组成原理课程实验 —— attacklab 报告}
+\author{姓名：李孙木铎 \quad 学号：2023010304 \quad 班级：软件31}
+\date{\today}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+简要说明实验目的、实验环境和主要结果。示例：本次实验通过对 attacklab 的逆向与利用，掌握栈溢出/格式化字符串/返回导向等攻击原理，并编写/调试相应 payload，实现预期的利用效果。
+\end{abstract}
+
+\tableofcontents
+
+\section{实验目的}
+\begin{itemize}
+  \item 理解并实践二进制漏洞利用的基本流程（分析、定位、构造 payload、执行验证）。
+  \item 熟练使用调试器（gdb）、静态分析工具（objdump/strings/readelf）及动态跟踪工具（strace/ltrace）。
+  \item 掌握绕过常见防护（ASLR/DEP/Canary/PIE）的思想与方法。
+\end{itemize}
+
+\section{实验环境}
+\begin{itemize}
+  \item 操作系统：Ubuntu XX.XX（内核 X.X）
+  \item 编译器/工具链：gcc/clang, make
+  \item 调试与分析工具：gdb, pwndbg/gef, objdump, readelf, nm, strace, ltrace
+  \item 实验目录结构（示例）：
+  \begin{itemize}
+    \item AttackLab/ -- 源码与可执行文件
+    \item AttackLab/doc/ -- 报告与说明
+    \item AttackLab/bin/ -- 编译产物
+  \end{itemize}
+\end{itemize}
+
+\section{样例漏洞概述}
+简要描述实验中目标二进制的功能与存在的漏洞类型（如：栈缓冲区溢出、格式化字符串、整数溢出等）。给出触发漏洞的输入示例。
+
+\section{分析方法与步骤}
+本节按步骤详细说明分析与利用过程。
+
+\subsection{静态分析}
+列出使用的静态分析命令和关键输出示例：
+\begin{lstlisting}[language=bash,caption={示例命令}]
+file target
+readelf -h target
+objdump -d target | less
+nm target
+strings target
+\end{lstlisting}
+
+\subsection{动态分析与调试}
+说明 gdb 调试的关键断点、寄存器观察、内存布局分析方法；示例命令：
+\begin{lstlisting}[language=bash,caption={gdb 常用操作}]
+gdb -q target
+(gdb) break main
+(gdb) run < input
+(gdb) info registers
+(gdb) x/40x $rsp
+\end{lstlisting}
+
+\subsection{漏洞定位}
+记录定位过程（函数、偏移、可控输入到返回地址的字节数）。给出确定偏移的实验与输出截图/文字描述。
+
+\subsection{构造 Payload}
+说明 payload 结构（填充、返回地址或ROP链、shellcode 等），并给出关键代码片段。例如使用 Python 构造 payload：
+\begin{lstlisting}[language=python,caption={构造示例 payload}]
+padding = b"A" * OFFSET
+ret = p64(target_ret_addr)
+payload = padding + ret
+\end{lstlisting}
+
+\subsection{绕过防护}
+依次说明该二进制启用了哪些防护（NX/ASLR/Canary/PIE/RELRO），并描述采取的绕过策略。例如：
+\begin{itemize}
+  \item 当 NX 开启：采用 ROP 或 return-to-libc。
+  \item 当 ASLR 开启：泄露地址后构造可重定位的 ROP 链或禁用 ASLR（仅用于测试）。
+  \item 当 Canary 存在：泄露 canary 或寻找不受 canary 保护的函数。
+\end{itemize}
+
+\section{实验结果}
+展示最终利用的步骤与运行结果（可包含程序输出、gdb 日志片段、成功获得 shell 的证明）。尽量附上关键截图或拷贝输出文本。
+
+\section{安全分析与防护建议}
+从开发者角度给出加固建议：
+\begin{itemize}
+  \item 使用栈保护（-fstack-protector-strong）、启用 PIE、RELRO、禁用不必要的函数（如 gets）。
+  \item 采用地址空间布局随机化与现代分配器保护。
+  \item 使用静态/动态检测手段（ASan/Valgrind/ fuzzing）提前发现类似缺陷。
+\end{itemize}
+
+\section{复现实验步骤（快速指南）}
+列出从源码编译到重现 exploit 的简洁指令序列：
+\begin{lstlisting}[language=bash,caption={示例复现命令}]
+cd /home/thu/AttackLab
+make clean && make
+# 关闭ASLR（测试环境）
+echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
+# 运行 exploit
+python3 exploit.py
+\end{lstlisting}
+
+\section{结论与心得}
+总结学到的关键点、遇到的难点与改进方向。
+
+\appendix
+\section{附录 A：关键源码/脚本}
+将关键 C 源码、exploit 脚本或 patch 贴在此处（用 listings 环境展示）。
+
+\section{附录 B：工具使用记录}
+记录使用 gdb/pwndbg 的主要命令历史，便于他人复现。
+
+\section{参考文献}
+列出参考书目与在线资源（如 CSAPP、pwnable.tw、ROP 教程等）。
+
+\end{document}
