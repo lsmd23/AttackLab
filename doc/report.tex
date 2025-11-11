@@ -1,147 +1,380 @@
-\documentclass[11pt,a4paper]{article}
-\usepackage{geometry}
-\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
-\usepackage{fontspec}
-\usepackage{xeCJK}
-% \setCJKmainfont{SimSun} % 可按需改为系统中可用中文字体
-% \usepackage{graphicx}
-\usepackage{hyperref}
-\usepackage{listings}
-\usepackage{xcolor}
-\usepackage{caption}
-\usepackage{float}
-\usepackage{amsmath}
+\documentclass[12pt,a4paper]{article}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{ctex}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{multirow}
 \usepackage{booktabs}
+\usepackage{hyperref}
 
-\hypersetup{
-    colorlinks=true,
-    linkcolor=blue,
-    citecolor=blue,
-    urlcolor=cyan
-}
+% 配置图表编号格式
+\graphicspath{{figures/}} % 图表文件存放路径
+\renewcommand{\figurename}{图}
+\renewcommand{\tablename}{表}
 
-\lstset{
-  basicstyle=\ttfamily\small,
-  keywordstyle=\color{blue}\bfseries,
-  commentstyle=\color{gray},
-  stringstyle=\color{red},
-  breaklines=true,
-  numbers=left,
-  numberstyle=\tiny,
-  frame=single,
-  captionpos=b
-}
-
-\title{计算机组成原理课程实验 —— attacklab 报告}
-\author{姓名：李孙木铎 \quad 学号：2023010304 \quad 班级：软件31}
+% 文档标题设置
+\title{计算机组成原理 Attack Lab 实验报告}
+\author{学号：2023010304\quad 姓名：李孙木铎\quad 班级：软件31}
 \date{\today}
 
 \begin{document}
 \maketitle
-\begin{abstract}
-简要说明实验目的、实验环境和主要结果。示例：本次实验通过对 attacklab 的逆向与利用，掌握栈溢出/格式化字符串/返回导向等攻击原理，并编写/调试相应 payload，实现预期的利用效果。
-\end{abstract}
+\tableofcontents % 生成目录
+\newpage
 
-\tableofcontents
+\section{实验概述}
+\subsection{实验背景与目的}
+\paragraph{背景说明}
+Attack Lab 围绕缓冲区溢出漏洞展开，通过对两个存在安全缺陷的可执行程序（\texttt{ctarget} 和 \texttt{rtarget}）设计攻击输入，理解攻击者利用漏洞的原理，同时掌握程序运行时栈结构、指令编码及系统安全防护机制。
 
-\section{实验目的}
+\paragraph{实验目标}
+\begin{enumerate}[label=(\arabic*)]
+    \item 深入理解 x86-64 架构下栈结构与函数调用参数传递机制；
+    \item 掌握代码注入（Code Injection, CI）攻击的原理与实现方法；
+    \item 掌握返回导向编程（Return-Oriented Programming, ROP）攻击的原理与实现方法；
+    \item 熟悉调试工具（GDB、OBJDUMP）与攻击字符串生成工具（HEX2RAW）的使用；
+    \item 理解编译器与操作系统的安全防护机制（如栈随机化、栈不可执行）。
+\end{enumerate}
+
+\subsection{实验环境与工具}
+\subsubsection{环境配置}
 \begin{itemize}
-  \item 理解并实践二进制漏洞利用的基本流程（分析、定位、构造 payload、执行验证）。
-  \item 熟练使用调试器（gdb）、静态分析工具（objdump/strings/readelf）及动态跟踪工具（strace/ltrace）。
-  \item 掌握绕过常见防护（ASLR/DEP/Canary/PIE）的思想与方法。
+    \item 操作系统：\underline{\qquad\qquad\qquad}（建议 x86-64 Ubuntu 22.04 或助教提供虚拟机）
+    \item 架构：x86-64
+    \item 关键配置：\underline{\qquad\qquad\qquad}（如是否关闭地址空间随机化 ASLR）
 \end{itemize}
 
-\section{实验环境}
+\subsubsection{核心工具}
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        工具名称 & 用途 & 关键命令示例 \\
+        \hline
+        \texttt{OBJDUMP} & 反汇编可执行文件，获取指令与地址 & \texttt{objdump -d ctarget > ctarget.dis} \\
+        \hline
+        \texttt{GDB} & 程序调试（断点、寄存器/内存查看） & \texttt{gdb ctarget}、\texttt{break *0x400xxx} \\
+        \hline
+        \texttt{HEX2RAW} & 将十六进制攻击字符串转为原始字节流 & \texttt{./hex2raw < exploit.txt | ./ctarget} \\
+        \hline
+        \texttt{tar} & 解压实验文件包 & \texttt{tar -xvf targetk.tar} \\
+        \hline
+    \end{tabular}
+    \caption{实验核心工具说明}
+    \label{tab:tools}
+\end{table}
+
+\subsection{实验文件说明}
+从 \url{http://nuc.kirotta.top:15513/} 获取的 \texttt{targetk.tar} 解压后包含以下文件：
 \begin{itemize}
-  \item 操作系统：Ubuntu XX.XX（内核 X.X）
-  \item 编译器/工具链：gcc/clang, make
-  \item 调试与分析工具：gdb, pwndbg/gef, objdump, readelf, nm, strace, ltrace
-  \item 实验目录结构（示例）：
-  \begin{itemize}
-    \item AttackLab/ -- 源码与可执行文件
-    \item AttackLab/doc/ -- 报告与说明
-    \item AttackLab/bin/ -- 编译产物
-  \end{itemize}
+    \item \texttt{README.txt}：目录文件说明；
+    \item \texttt{ctarget}：存在代码注入漏洞的可执行程序；
+    \item \texttt{rtarget}：存在 ROP 漏洞的可执行程序；
+    \item \texttt{cookie.txt}：个人专属 8 位十六进制标识（攻击参数核心）；
+    \item \texttt{farm.c}：ROP 攻击所需的“gadget 农场”源代码；
+    \item \texttt{hex2raw}：攻击字符串转换工具。
 \end{itemize}
 
-\section{样例漏洞概述}
-简要描述实验中目标二进制的功能与存在的漏洞类型（如：栈缓冲区溢出、格式化字符串、整数溢出等）。给出触发漏洞的输入示例。
+\subsection{实验任务总览}
+实验分为 5 个阶段，其中前 4 个阶段计分，第 5 阶段为可选任务：
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        阶段 & 目标程序 & 攻击类型 & 目标函数 & 核心要求 & 分值 \\
+        \hline
+        1 & \texttt{ctarget} & 代码注入（CI） & \texttt{touch1} & 重定向返回地址至 \texttt{touch1} & 10 \\
+        \hline
+        2 & \texttt{ctarget} & 代码注入（CI） & \texttt{touch2} & 传递 \texttt{cookie} 作为参数 & 25 \\
+        \hline
+        3 & \texttt{ctarget} & 代码注入（CI） & \texttt{touch3} & 传递 \texttt{cookie} 字符串地址作为参数 & 25 \\
+        \hline
+        4 & \texttt{rtarget} & 返回导向编程（ROP） & \texttt{touch2} & 用 gadget 传递 \texttt{cookie} 参数 & 35 \\
+        \hline
+        5（可选） & \texttt{rtarget} & 返回导向编程（ROP） & \texttt{touch3} & 用 gadget 传递 \texttt{cookie} 字符串地址 & 0 \\
+        \hline
+    \end{tabular}
+    \caption{实验任务与分值分布}
+    \label{tab:tasks}
+\end{table}
 
-\section{分析方法与步骤}
-本节按步骤详细说明分析与利用过程。
 
-\subsection{静态分析}
-列出使用的静态分析命令和关键输出示例：
-\begin{lstlisting}[language=bash,caption={示例命令}]
-file target
-readelf -h target
-objdump -d target | less
-nm target
-strings target
-\end{lstlisting}
+\newpage
+\section{代码注入攻击（针对 ctarget）}
+\subsection{阶段 1：跳转至 touch1 函数}
+\subsubsection{实验原理}
+\paragraph{函数调用栈结构}
+\texttt{getbuf} 由 \texttt{test} 函数调用，正常执行流程为：\texttt{test -> getbuf -> ret 回到 test}。攻击需修改 \texttt{getbuf} 返回时的栈中“返回地址”，使其指向 \texttt{touch1} 函数入口地址。
 
-\subsection{动态分析与调试}
-说明 gdb 调试的关键断点、寄存器观察、内存布局分析方法；示例命令：
-\begin{lstlisting}[language=bash,caption={gdb 常用操作}]
-gdb -q target
-(gdb) break main
-(gdb) run < input
-(gdb) info registers
-(gdb) x/40x $rsp
-\end{lstlisting}
+\paragraph{关键问题}
+\begin{enumerate}[label=(\arabic*)]
+    \item 确定 \texttt{getbuf} 中缓冲区 \texttt{buf} 的大小（\texttt{BUFFER\_SIZE}）；
+    \item 确定栈中“返回地址”相对于 \texttt{buf} 的偏移量；
+    \item 获取 \texttt{touch1} 函数的入口地址。
+\end{enumerate}
 
-\subsection{漏洞定位}
-记录定位过程（函数、偏移、可控输入到返回地址的字节数）。给出确定偏移的实验与输出截图/文字描述。
+\subsubsection{实验步骤}
+1. \underline{\qquad\qquad\qquad}（如用 OBJDUMP 反汇编 \texttt{ctarget}，分析 \texttt{getbuf} 栈帧）；\\
+2. \underline{\qquad\qquad\qquad}（如用 GDB 调试确定缓冲区偏移量）；\\
+3. \underline{\qquad\qquad\qquad}（获取 \texttt{touch1} 入口地址）；\\
+4. \underline{\qquad\qquad\qquad}（构造攻击字符串，用 HEX2RAW 转换并测试）。
 
-\subsection{构造 Payload}
-说明 payload 结构（填充、返回地址或ROP链、shellcode 等），并给出关键代码片段。例如使用 Python 构造 payload：
-\begin{lstlisting}[language=python,caption={构造示例 payload}]
-padding = b"A" * OFFSET
-ret = p64(target_ret_addr)
-payload = padding + ret
-\end{lstlisting}
+\subsubsection{攻击字符串设计}
+\paragraph{字符串结构}
+\begin{verbatim}
+# 格式：[填充字节（BUFFER_SIZE 字节）][touch1 入口地址（8 字节，小端序）]
+示例：
+00 00 00 00 00 00 00 00  # 填充字节（假设 BUFFER_SIZE=8，实际需按反汇编结果调整）
+00 00 00 00 04 08 00 00  # touch1 地址（示例，需替换为实际地址，小端序）
+\end{verbatim}
 
-\subsection{绕过防护}
-依次说明该二进制启用了哪些防护（NX/ASLR/Canary/PIE/RELRO），并描述采取的绕过策略。例如：
-\begin{itemize}
-  \item 当 NX 开启：采用 ROP 或 return-to-libc。
-  \item 当 ASLR 开启：泄露地址后构造可重定位的 ROP 链或禁用 ASLR（仅用于测试）。
-  \item 当 Canary 存在：泄露 canary 或寻找不受 canary 保护的函数。
-\end{itemize}
+\paragraph{最终攻击字符串（hex 格式）}
+\underline{\qquad\qquad\qquad}
 
-\section{实验结果}
-展示最终利用的步骤与运行结果（可包含程序输出、gdb 日志片段、成功获得 shell 的证明）。尽量附上关键截图或拷贝输出文本。
+\subsubsection{实验结果与验证}
+\paragraph{执行命令}
+\texttt{./hex2raw < ctarget01.txt | ./ctarget}
 
-\section{安全分析与防护建议}
-从开发者角度给出加固建议：
-\begin{itemize}
-  \item 使用栈保护（-fstack-protector-strong）、启用 PIE、RELRO、禁用不必要的函数（如 gets）。
-  \item 采用地址空间布局随机化与现代分配器保护。
-  \item 使用静态/动态检测手段（ASan/Valgrind/ fuzzing）提前发现类似缺陷。
-\end{itemize}
+\paragraph{预期输出}
+\begin{verbatim}
+Cookie: 0xXXXXXXXXX  # 个人 cookie
+Type string:Touch1!: You called touch1()
+Valid solution for level 1 with target ctarget
+PASSED: Sent exploit string to server to be validated.
+NICE JOB!
+\end{verbatim}
 
-\section{复现实验步骤（快速指南）}
-列出从源码编译到重现 exploit 的简洁指令序列：
-\begin{lstlisting}[language=bash,caption={示例复现命令}]
-cd /home/thu/AttackLab
-make clean && make
-# 关闭ASLR（测试环境）
-echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
-# 运行 exploit
-python3 exploit.py
-\end{lstlisting}
+\paragraph{实际结果与问题分析}
+\underline{\qquad\qquad\qquad}
 
-\section{结论与心得}
-总结学到的关键点、遇到的难点与改进方向。
 
-\appendix
-\section{附录 A：关键源码/脚本}
-将关键 C 源码、exploit 脚本或 patch 贴在此处（用 listings 环境展示）。
+\subsection{阶段 2：跳转至 touch2 函数（传递 cookie 参数）}
+\subsubsection{实验原理}
+\paragraph{参数传递规则}
+x86-64 架构下，函数第一个参数通过 \%rdi 寄存器传递。攻击需：
+1. 在栈中注入自定义汇编代码，将 \texttt{cookie} 加载到 \%rdi；
+2. 修改 \texttt{getbuf} 返回地址，使其先跳至注入代码，再由注入代码跳至 \texttt{touch2}。
 
-\section{附录 B：工具使用记录}
-记录使用 gdb/pwndbg 的主要命令历史，便于他人复现。
+\paragraph{核心汇编指令设计}
+需实现：\texttt{mov \$cookie, \%rdi; ret;}（将 cookie 存入 \%rdi，再跳至 \texttt{touch2}）。
 
-\section{参考文献}
-列出参考书目与在线资源（如 CSAPP、pwnable.tw、ROP 教程等）。
+\subsubsection{实验步骤}
+1. \underline{\qquad\qquad\qquad}（反汇编 \texttt{ctarget}，确定 \texttt{buf} 地址与返回地址偏移）；\\
+2. \underline{\qquad\qquad\qquad}（编写汇编代码，生成对应机器码）；\\
+3. \underline{\qquad\qquad\qquad}（确定注入代码在栈中的地址，即 \texttt{buf} 起始地址）；\\
+4. \underline{\qquad\qquad\qquad}（构造攻击字符串：填充字节 + 注入代码地址 + 注入代码 + cookie）；\\
+5. \underline{\qquad\qquad\qquad}（用 HEX2RAW 转换并测试）。
+
+\subsubsection{攻击字符串设计}
+\paragraph{字符串结构}
+\begin{verbatim}
+# 格式：[填充字节（偏移量 - 注入代码长度 字节）][注入代码地址（8 字节）][注入代码（机器码）][cookie（8 字节，可选，视指令设计）]
+示例：
+00 00 00 00 00 00 00 00  # 填充字节（使返回地址指向注入代码）
+10 20 00 00 00 00 00 00  # 注入代码地址（即 buf 起始地址，小端序）
+48 c7 c7 XX XX XX XX 00  # 注入代码：mov $0xXXXXXXXX, %rdi（XX 为 cookie 字节，小端序）
+c3 00 00 00 00 00 00 00  # 注入代码：ret（跳至 touch2，需在指令中指定 touch2 地址）
+\end{verbatim}
+
+\paragraph{汇编代码与机器码转换}
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        汇编指令 & 机器码（hex） & 说明 \\
+        \hline
+        \texttt{mov \$0xXXXXXXXXX, \%rdi} & \underline{\qquad\qquad\qquad} & 将 cookie 存入 \%rdi \\
+        \hline
+        \texttt{jmp touch2} 或 \texttt{ret} & \underline{\qquad\qquad\qquad} & 跳至 touch2（ret 需配合栈中地址） \\
+        \hline
+    \end{tabular}
+    \caption{注入代码的汇编与机器码对应关系}
+    \label{tab:asm2machine}
+\end{table}
+
+\paragraph{最终攻击字符串（hex 格式）}
+\underline{\qquad\qquad\qquad}
+
+\subsubsection{实验结果与验证}
+\paragraph{执行命令}
+\texttt{./hex2raw < ctarget02.txt | ./ctarget}
+
+\paragraph{预期输出}
+\begin{verbatim}
+Cookie: 0xXXXXXXXXX
+Type string:Touch2!: You called touch2(0xXXXXXXXXX)
+Valid solution for level 2 with target ctarget
+PASSED: Sent exploit string to server to be validated.
+NICE JOB!
+\end{verbatim}
+
+\paragraph{实际结果与问题分析}
+\underline{\qquad\qquad\qquad}
+
+
+\subsection{阶段 3：跳转至 touch3 函数（传递 cookie 字符串参数）}
+\subsubsection{实验原理}
+\paragraph{参数要求}
+\texttt{touch3} 需接收指向 \texttt{cookie} 字符串（8 位 hex + 末尾 null 字节）的地址作为参数。关键挑战：
+1. 字符串需存入栈中，且避免被 \texttt{hexmatch} 等函数调用时的栈操作覆盖；
+2. 注入代码需将字符串地址加载到 \%rdi，再跳至 \texttt{touch3}。
+
+\paragraph{字符串存储位置选择}
+建议将字符串存于“返回地址之后”的栈空间（避免被函数调用覆盖），即攻击字符串结构包含：[填充] + [注入代码地址] + [注入代码] + [cookie 字符串]。
+
+\subsubsection{实验步骤}
+1. \underline{\qquad\qquad\qquad}（确定字符串在栈中的存储地址）；\\
+2. \underline{\qquad\qquad\qquad}（编写注入代码：将字符串地址存入 \%rdi，跳至 \texttt{touch3}）；\\
+3. \underline{\qquad\qquad\qquad}（构造攻击字符串：填充 + 注入地址 + 注入代码 + cookie 字符串 + null 字节）；\\
+4. \underline{\qquad\qquad\qquad}（测试并调试字符串地址正确性）。
+
+\subsubsection{攻击字符串设计}
+\paragraph{字符串结构}
+\begin{verbatim}
+# 格式：[填充字节][注入代码地址][注入代码][cookie 字符串（8 字节 ASCII）][00（null 终止符）]
+示例：
+00 00 00 00 00 00 00 00  # 填充字节
+10 20 00 00 00 00 00 00  # 注入代码地址（buf 起始地址）
+48 c7 c7 30 20 00 00 00  # 注入代码：mov $0x2030, %rdi（字符串地址，示例）
+c3 31 32 33 34 35 36 37  # ret 指令 + cookie 字符串（假设 cookie 为 12345678）
+38 00 00 00 00 00 00 00  # 字符串剩余部分 + null 终止符
+\end{verbatim}
+
+\paragraph{Cookie 字符串转换}
+例如：cookie 为 0x1a7dd803 → 字符串为 "1a7dd803" → ASCII 码为 31 61 37 64 64 38 30 33。
+
+\paragraph{最终攻击字符串（hex 格式）}
+\underline{\qquad\qquad\qquad}
+
+\subsubsection{实验结果与验证}
+\paragraph{执行命令}
+\texttt{./hex2raw < ctarget03.txt | ./ctarget}
+
+\paragraph{预期输出}
+\begin{verbatim}
+Cookie: 0xXXXXXXXXX
+Type string:Touch3!: You called touch3("XXXXXXXX")  # XXXXXXXX 为 cookie 字符串
+Valid solution for level 3 with target ctarget
+PASSED: Sent exploit string to server to be validated.
+NICE JOB!
+\end{verbatim}
+
+\paragraph{实际结果与问题分析}
+\underline{\qquad\qquad\qquad}
+
+
+\newpage
+\section{返回导向攻击（针对 rtarget）}
+\subsection{阶段 2：ROP 攻击 touch2 函数（传递 cookie 参数）}
+\subsubsection{实验原理}
+\paragraph{RTARGET 安全机制}
+\texttt{rtarget} 启用栈随机化与栈不可执行，代码注入失效。需通过“gadget”（现有代码中“指令序列 + ret”）串联执行，核心目标：将 \texttt{cookie} 存入 \%rdi 并跳至 \texttt{touch2}。
+
+\paragraph{Gadget 需求}
+需两类 gadget：
+1. \texttt{popq \%rax; ret;}：从栈中弹出 \texttt{cookie} 至 \%rax；
+2. \texttt{movq \%rax, \%rdi; ret;}：将 \%rax 中的 \texttt{cookie} 转移至 \%rdi。
+
+\subsubsection{实验步骤}
+1. \underline{\qquad\qquad\qquad}（反汇编 \texttt{rtarget}，在 start\_farm ~ mid\_farm 间寻找目标 gadget）；\\
+2. \underline{\qquad\qquad\qquad}（记录 gadget 入口地址与 \texttt{touch2} 入口地址）；\\
+3. \underline{\qquad\qquad\qquad}（构造 ROP 链：填充字节 + gadget1 地址 + cookie + gadget2 地址 + touch2 地址）；\\
+4. \underline{\qquad\qquad\qquad}（用 HEX2RAW 转换并测试，多次执行验证栈随机化适应性）。
+
+\subsubsection{攻击字符串（ROP 链）设计}
+\paragraph{ROP 链结构}
+\begin{verbatim}
+# 格式：[填充字节（覆盖 getbuf 栈帧至返回地址）][gadget1 地址][cookie][gadget2 地址][touch2 地址]
+# 说明：ret 指令会将栈顶值作为下一条指令地址，故 gadget 后需跟参数/下一个 gadget 地址
+示例：
+00 00 00 00 00 00 00 00  # 填充字节（按 getbuf 栈帧大小调整）
+20 30 00 00 00 00 00 00  # gadget1：popq %rax; ret; 地址（小端序）
+XX XX XX XX XX XX XX XX  # cookie（8 字节，小端序）
+40 50 00 00 00 00 00 00  # gadget2：movq %rax, %rdi; ret; 地址（小端序）
+60 70 00 00 00 00 00 00  # touch2 入口地址（小端序）
+\end{verbatim}
+
+\paragraph{Gadget 信息表}
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        Gadget 功能 & 指令序列 & 入口地址（hex） & 机器码（hex） \\
+        \hline
+        popq \%rax; ret; & \texttt{pop \%rax; ret;} & \underline{\qquad\qquad\qquad} & \underline{\qquad\qquad\qquad} \\
+        \hline
+        movq \%rax, \%rdi; ret; & \texttt{mov \%rax, \%rdi; ret;} & \underline{\qquad\qquad\qquad} & \underline{\qquad\qquad\qquad} \\
+        \hline
+    \end{tabular}
+    \caption{ROP 攻击所用 Gadget 信息}
+    \label{tab:gadgets}
+\end{table}
+
+\paragraph{最终攻击字符串（hex 格式）}
+\underline{\qquad\qquad\qquad}
+
+\subsubsection{实验结果与验证}
+\paragraph{执行命令}
+\texttt{./hex2raw < rtarget02.txt | ./rtarget}
+
+\paragraph{预期输出}
+\begin{verbatim}
+Cookie: 0xXXXXXXXXX
+Type string:Touch2!: You called touch2(0xXXXXXXXXX)
+Valid solution for level 2 with target rtarget
+PASSED: Sent exploit string to server to be validated.
+NICE JOB!
+\end{verbatim}
+
+\paragraph{实际结果与问题分析}
+\underline{\qquad\qquad\qquad}
+
+
+\subsection{阶段 3：ROP 攻击 touch3 函数（可选，不计分）}
+\subsubsection{实验原理}
+\paragraph{核心挑战}
+需传递 cookie 字符串地址至 \%rdi，需解决：
+1. 栈随机化导致字符串绝对地址不可预测 → 利用 \%rsp 相对地址计算；
+2. 需更多 gadget 实现地址计算（如 \texttt{addq \$offset, \%rsp; ret;}）与寄存器中转。
+
+\subsubsection{实验步骤}
+\underline{\qquad\qquad\qquad}
+
+\subsubsection{攻击字符串设计}
+\underline{\qquad\qquad\qquad}
+
+\subsubsection{实验结果与验证}
+\underline{\qquad\qquad\qquad}
+
+
+\newpage
+\section{实验总结与反思}
+\subsection{实验收获}
+1. \underline{\qquad\qquad\qquad}（如对 x86-64 栈结构、指令编码的理解）；\\
+2. \underline{\qquad\qquad\qquad}（如调试工具使用技巧、攻击思路设计）；\\
+3. \underline{\qquad\qquad\qquad}（如系统安全防护机制的作用与局限性）。
+
+\subsection{遇到的问题与解决方法}
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        问题描述 & 原因分析 & 解决方法 \\
+        \hline
+        阶段 1 触发段错误 & 地址小端序错误 / 填充字节长度不对 & 重新反汇编确认地址，调整填充长度 \\
+        \hline
+        阶段 2 \%rdi 未正确加载 cookie & 注入代码地址错误 / 机器码错误 & 用 GDB 查看寄存器值，验证机器码正确性 \\
+        \hline
+        ROP 攻击多次执行部分失败 & 栈随机化未适配 & 确认 gadget 地址是否在稳定区域，调整 ROP 链 \\
+        \hline
+        \underline{\qquad\qquad\qquad} & \underline{\qquad\qquad\qquad} & \underline{\qquad\qquad\qquad} \\
+        \hline
+    \end{tabular}
+    \caption{实验问题与解决方案}
+    \label{tab:problems}
+\end{table}
+
+\subsection{对课程的建议（可选）}
+\underline{\qquad\qquad\qquad}
 
 \end{document}
