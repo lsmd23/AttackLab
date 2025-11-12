@@ -6,6 +6,5 @@
 30 31 32 33 34 35 36 37 38 39
  /* we should redirect the control flow to touch1 function */
  /* the address of touch1 function is 0x8089fe */
- /* the original return address is 0x808c88 of the Gets function */
  /* we should overwrite the return address with 0x8089fe */
  fe 89 80 
