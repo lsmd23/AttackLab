@@ -771,11 +771,11 @@ Disassembly of section .text:
   808c05:	c3                   	retq   
 
 0000000000808c06 <setval_145>:
-  808c06:	c7 07 58 c3 a3 a9    	movl   $0xa9a3c358,(%rdi)
+  808c06:	c7 07 58 c3 a3 a9    	movl   $0xa9a3c358,(%rdi) # 808c08 58 | c3 -> pop %rax; retq
   808c0c:	c3                   	retq   
 
 0000000000808c0d <addval_368>:
-  808c0d:	8d 87 48 89 c7 c3    	lea    -0x3c3876b8(%rdi),%eax
+  808c0d:	8d 87 48 89 c7 c3    	lea    -0x3c3876b8(%rdi),%eax # 808c10 c7 | c3 -> movl %edi %eax; retq
   808c13:	c3                   	retq   
 
 0000000000808c14 <getval_155>:
@@ -791,15 +791,15 @@ Disassembly of section .text:
   808c24:	c3                   	retq   
 
 0000000000808c25 <addval_250>:
-  808c25:	8d 87 7b 89 ce c2    	lea    -0x3d317685(%rdi),%eax
+  808c25:	8d 87 7b 89 ce c2    	lea    -0x3d317685(%rdi),%eax 
   808c2b:	c3                   	retq   
 
 0000000000808c2c <addval_168>:
-  808c2c:	8d 87 ec 49 89 e0    	lea    -0x1f76b614(%rdi),%eax
+  808c2c:	8d 87 ec 49 89 e0    	lea    -0x1f76b614(%rdi),%eax # 808c30: 89 e0 | c3 -> movl %esp %eax; retq
   808c32:	c3                   	retq   
 
 0000000000808c33 <getval_377>:
-  808c33:	b8 48 89 e0 c3       	mov    $0xc3e08948,%eax
+  808c33:	b8 48 89 e0 c3       	mov    $0xc3e08948,%eax # 808c34: 48 89 e0 | c3 -> movq %rsp %rax; retq
   808c38:	c3                   	retq   
 
 0000000000808c39 <getval_275>:
@@ -807,11 +807,11 @@ Disassembly of section .text:
   808c3e:	c3                   	retq   
 
 0000000000808c3f <setval_435>:
-  808c3f:	c7 07 89 c2 60 c0    	movl   $0xc060c289,(%rdi)
+  808c3f:	c7 07 89 c2 60 c0    	movl   $0xc060c289,(%rdi) 
   808c45:	c3                   	retq   
 
 0000000000808c46 <getval_228>:
-  808c46:	b8 89 d1 90 c3       	mov    $0xc390d189,%eax
+  808c46:	b8 89 d1 90 c3       	mov    $0xc390d189,%eax # 808c47: 89 d1 | 90 | c3 -> movl %edx %ecx; nop; retq
   808c4b:	c3                   	retq   
 
 0000000000808c4c <getval_183>:
@@ -835,19 +835,19 @@ Disassembly of section .text:
   808c6c:	c3                   	retq   
 
 0000000000808c6d <getval_430>:
-  808c6d:	b8 48 89 e0 c3       	mov    $0xc3e08948,%eax
+  808c6d:	b8 48 89 e0 c3       	mov    $0xc3e08948,%eax # 808c6e: 48 89 e0 | c3 -> movq %rax %rsp; retq
   808c72:	c3                   	retq   
 
 0000000000808c73 <setval_345>:
-  808c73:	c7 07 81 d1 38 d2    	movl   $0xd238d181,(%rdi)
+  808c73:	c7 07 81 d1 38 d2    	movl   $0xd238d181,(%rdi) 
   808c79:	c3                   	retq   
 
 0000000000808c7a <setval_340>:
-  808c7a:	c7 07 81 ce 38 c0    	movl   $0xc038ce81,(%rdi)
+  808c7a:	c7 07 81 ce 38 c0    	movl   $0xc038ce81,(%rdi) # 808c7e: 38 c0 | c3 -> cmpb %al %al; retq
   808c80:	c3                   	retq   
 
 0000000000808c81 <setval_325>:
-  808c81:	c7 07 58 89 e0 90    	movl   $0x90e08958,(%rdi)
+  808c81:	c7 07 58 89 e0 90    	movl   $0x90e08958,(%rdi) # 808c83: 58 | 89 e0 | 90 | c3 -> pop %rax; movl %esp %eax; nop; retq
   808c87:	c3                   	retq   
 
 0000000000808c88 <addval_486>:
@@ -855,15 +855,15 @@ Disassembly of section .text:
   808c8e:	c3                   	retq   
 
 0000000000808c8f <addval_300>:
-  808c8f:	8d 87 81 d1 20 db    	lea    -0x24df2e7f(%rdi),%eax
+  808c8f:	8d 87 81 d1 20 db    	lea    -0x24df2e7f(%rdi),%eax # 808c93: 20 db | c3 -> andb %bl %bl; retq
   808c95:	c3                   	retq   
 
 0000000000808c96 <addval_498>:
-  808c96:	8d 87 c7 c8 89 e0    	lea    -0x1f763739(%rdi),%eax
+  808c96:	8d 87 c7 c8 89 e0    	lea    -0x1f763739(%rdi),%eax # 808c9a: 89 e0 | c3 -> movl %esp %eax; retq
   808c9c:	c3                   	retq   
 
 0000000000808c9d <setval_302>:
-  808c9d:	c7 07 89 d1 28 d2    	movl   $0xd228d189,(%rdi)
+  808c9d:	c7 07 89 d1 28 d2    	movl   $0xd228d189,(%rdi) 
   808ca3:	c3                   	retq   
 
 0000000000808ca4 <setval_388>:
@@ -875,11 +875,11 @@ Disassembly of section .text:
   808cb0:	c3                   	retq   
 
 0000000000808cb1 <addval_195>:
-  808cb1:	8d 87 89 c2 20 d2    	lea    -0x2ddf3d77(%rdi),%eax
+  808cb1:	8d 87 89 c2 20 d2    	lea    -0x2ddf3d77(%rdi),%eax # 808cb3: 89 c2 | 20 d2 | c3 -> movl %ecx %edx; andb %dl %dl; retq
   808cb7:	c3                   	retq   
 
 0000000000808cb8 <setval_151>:
-  808cb8:	c7 07 89 d1 90 c3    	movl   $0xc390d189,(%rdi)
+  808cb8:	c7 07 89 d1 90 c3    	movl   $0xc390d189,(%rdi) # 808cba: 89 d1 | 90 | c3 -> movl %edx %ecx; nop; retq
   808cbe:	c3                   	retq   
 
 0000000000808cbf <setval_401>:
@@ -891,11 +891,11 @@ Disassembly of section .text:
   808ccc:	c3                   	retq   
 
 0000000000808ccd <addval_164>:
-  808ccd:	8d 87 89 c2 90 90    	lea    -0x6f6f3d77(%rdi),%eax
+  808ccd:	8d 87 89 c2 90 90    	lea    -0x6f6f3d77(%rdi),%eax # 808ccf: 89 c2 | 90 | 90 | c3 -> movl %eax %edx; nop; nop; retq
   808cd3:	c3                   	retq   
 
 0000000000808cd4 <getval_403>:
-  808cd4:	b8 89 ce 84 d2       	mov    $0xd284ce89,%eax
+  808cd4:	b8 89 ce 84 d2       	mov    $0xd284ce89,%eax # 808cd7: 84 d2 | c3 -> testb %dl %dl; retq
   808cd9:	c3                   	retq   
 
 0000000000808cda <getval_357>:
@@ -907,11 +907,11 @@ Disassembly of section .text:
   808ce6:	c3                   	retq   
 
 0000000000808ce7 <addval_261>:
-  808ce7:	8d 87 89 ce 90 90    	lea    -0x6f6f3177(%rdi),%eax
+  808ce7:	8d 87 89 ce 90 90    	lea    -0x6f6f3177(%rdi),%eax # 808ce9: 89 ce | 90 | 90 | c3 -> movl %ecx %esi; nop; nop; retq
   808ced:	c3                   	retq   
 
 0000000000808cee <setval_273>:
-  808cee:	c7 07 c9 ce 84 c0    	movl   $0xc084cec9,(%rdi)
+  808cee:	c7 07 c9 ce 84 c0    	movl   $0xc084cec9,(%rdi) # 808cf2: 84 c0 | c3 -> testb %al %al; retq
   808cf4:	c3                   	retq   
 
 0000000000808cf5 <getval_243>:

